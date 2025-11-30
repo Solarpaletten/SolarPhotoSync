@@ -230,3 +230,10 @@ dist/
 
 # Mac files
 .DS_Store
+
+venv/
+__pycache__/
+logs/
+*.log
+.idea/
+*.pyc
