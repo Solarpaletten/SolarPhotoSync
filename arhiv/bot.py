@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.2.0 - Main Bot Module (Command Routing Edition)
+SOLAR PhotoSync v1.1.0 - Main Bot Module (Deploy Edition)
 Telegram Bot для автоматической загрузки медиафайлов в SOLAR
 
 Автор: Claude (инженер)
@@ -30,7 +30,7 @@ from webhook_handler import create_webhook_handler
 class SolarPhotoSyncBot:
     """Главный класс бота Solar PhotoSync"""
     
-    VERSION = "1.2.0"
+    VERSION = "1.1.0"
     
     def __init__(self, config_path: str = None):
         """

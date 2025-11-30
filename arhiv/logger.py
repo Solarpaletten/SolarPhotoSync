@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.2.0 - Logger Module (Command Routing Edition)
+SOLAR PhotoSync v1.1.0 - Logger Module (Deploy Edition)
 Модуль логирования для отслеживания всех операций
 """
 

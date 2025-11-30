@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.2.0 - Classifier Module (Command Routing Edition)
+SOLAR PhotoSync v1.1.0 - Classifier Module (Deploy Edition)
 Мини-ИИ классификация v1.0 по ключевым словам
 """
 

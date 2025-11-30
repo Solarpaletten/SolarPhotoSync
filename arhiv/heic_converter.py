@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.2.0 - HEIC Converter Module (Command Routing Edition)
+SOLAR PhotoSync v1.1.0 - HEIC Converter Module (Deploy Edition)
 Конвертация HEIC/HEIF в JPG с сохранением EXIF
 """
 

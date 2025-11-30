@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.2.0 - File Saver Module (Command Routing Edition)
+SOLAR PhotoSync v1.1.0 - File Saver Module (Deploy Edition)
 Сохранение файлов в структурированную файловую систему
 """
 

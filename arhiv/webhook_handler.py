@@ -1,11 +1,11 @@
 """
-SOLAR PhotoSync v1.2.0 - Webhook Handler (Command Routing Edition)
-Обработчик webhook запросов от Telegram с поддержкой команд категоризации
+SOLAR PhotoSync v1.1.0 - Webhook Handler (Deploy Edition)
+Обработчик webhook запросов от Telegram
 """
 
 import json
 import aiohttp
-import time
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
@@ -14,126 +14,8 @@ from classifier import FileClassifier
 from file_saver import FileSaver
 
 
-class UserStateManager:
-    """Менеджер состояния пользователей для Command Routing"""
-    
-    # Доступные категории команд
-    CATEGORY_COMMANDS = {
-        '/sprinter': 'Sprinter',
-        '/actros': 'Actros',
-        '/engine': 'Engine',
-        '/vin': 'VIN',
-        '/docs': 'Documents',
-        '/invoice': 'Invoice',
-        '/photos': 'Photos',
-        '/tires': 'Tires',
-        '/ldz': 'LDZ',
-        '/legal': 'Legal',
-        '/other': 'Other',
-    }
-    
-    # Команды сброса
-    RESET_COMMANDS = {'/cancel', '/reset'}
-    
-    # Таймаут неактивности (секунды)
-    INACTIVITY_TIMEOUT = 600  # 10 минут
-    
-    def __init__(self):
-        self.logger = get_logger()
-        # Состояние пользователей: {user_id: {"category": str, "last_activity": float}}
-        self._user_states: Dict[int, Dict[str, Any]] = {}
-    
-    def get_user_category(self, user_id: int) -> str:
-        """
-        Получить текущую категорию пользователя с проверкой таймаута
-        
-        Args:
-            user_id: ID пользователя Telegram
-        
-        Returns:
-            Активная категория или "Other"
-        """
-        if user_id not in self._user_states:
-            return "Other"
-        
-        state = self._user_states[user_id]
-        
-        # Проверяем таймаут неактивности
-        if time.time() - state["last_activity"] > self.INACTIVITY_TIMEOUT:
-            old_category = state["category"]
-            self._user_states[user_id] = {
-                "category": "Other",
-                "last_activity": time.time()
-            }
-            self.logger.info(f"Category auto-reset → Other (was: {old_category}, user: {user_id})")
-            return "Other"
-        
-        return state["category"]
-    
-    def set_user_category(self, user_id: int, category: str) -> None:
-        """
-        Установить категорию для пользователя
-        
-        Args:
-            user_id: ID пользователя
-            category: Категория для установки
-        """
-        self._user_states[user_id] = {
-            "category": category,
-            "last_activity": time.time()
-        }
-        self.logger.info(f"Set active category → {category} (user: {user_id})")
-    
-    def update_activity(self, user_id: int) -> None:
-        """Обновить время последней активности"""
-        if user_id in self._user_states:
-            self._user_states[user_id]["last_activity"] = time.time()
-    
-    def reset_category(self, user_id: int) -> None:
-        """Сбросить категорию пользователя"""
-        old_category = self._user_states.get(user_id, {}).get("category", "Other")
-        self._user_states[user_id] = {
-            "category": "Other",
-            "last_activity": time.time()
-        }
-        self.logger.info(f"Category reset → Other (was: {old_category}, user: {user_id})")
-    
-    def process_command(self, user_id: int, command: str) -> Tuple[bool, str]:
-        """
-        Обработать команду от пользователя
-        
-        Args:
-            user_id: ID пользователя
-            command: Команда (например /sprinter)
-        
-        Returns:
-            Tuple[успех, сообщение для отправки]
-        """
-        command_lower = command.lower().strip()
-        
-        # Команда сброса
-        if command_lower in self.RESET_COMMANDS:
-            self.reset_category(user_id)
-            return True, "🔄 Category reset → Other"
-        
-        # Команда категории
-        if command_lower in self.CATEGORY_COMMANDS:
-            category = self.CATEGORY_COMMANDS[command_lower]
-            self.set_user_category(user_id, category)
-            return True, f"📁 Active category → {category}\n\nAll following photos will be saved to {category}/"
-        
-        # Неизвестная команда
-        available = ", ".join(sorted(self.CATEGORY_COMMANDS.keys()))
-        return False, f"❗ Unknown category command.\n\nAvailable: {available}\n\nReset: /cancel, /reset"
-    
-    def get_available_commands(self) -> str:
-        """Получить список доступных команд"""
-        commands = sorted(self.CATEGORY_COMMANDS.keys())
-        return ", ".join(commands)
-
-
 class WebhookHandler:
-    """Обработчик Telegram Webhook с Command Routing"""
+    """Обработчик Telegram Webhook"""
     
     TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}"
     TELEGRAM_FILE_BASE = "https://api.telegram.org/file/bot{token}"
@@ -157,9 +39,6 @@ class WebhookHandler:
         self.classifier = classifier
         self.file_saver = file_saver
         
-        # Менеджер состояния пользователей
-        self.user_state = UserStateManager()
-        
         self.bot_token = config.get("bot", {}).get("token", "")
         self.api_base = self.TELEGRAM_API_BASE.format(token=self.bot_token)
         self.file_base = self.TELEGRAM_FILE_BASE.format(token=self.bot_token)
@@ -167,7 +46,7 @@ class WebhookHandler:
         storage_config = config.get("storage", {})
         self.allowed_types = set(storage_config.get("allowed_types", []))
         
-        self.logger.info("WebhookHandler initialized with Command Routing")
+        self.logger.info("WebhookHandler initialized")
     
     async def handle_update(self, update: dict) -> Dict[str, Any]:
         """
@@ -188,45 +67,32 @@ class WebhookHandler:
         update_id = update.get("update_id", 0)
         message = update.get("message", {})
         
-        # Фильтрация пустых updates (webhook ping)
+        # Фильтрация пустых updates (webhook ping) - return 200 silently
         if not message:
             result["success"] = True
             result["message"] = "empty_update"
             return result
         
         chat_id = message.get("chat", {}).get("id")
-        user_id = message.get("from", {}).get("id", chat_id)
         chat_title = message.get("chat", {}).get("title", "")
         caption = message.get("caption", "")
         text = message.get("text", "")
         
         self.logger.webhook_received(update_id, chat_id)
         
-        # Обработка текстовых команд
-        if text and text.startswith('/'):
-            command = text.split()[0].lower()
-            self.logger.info(f"Command received: {command}")
-            
-            # Проверяем, это команда категории?
-            if command in self.user_state.CATEGORY_COMMANDS or command in self.user_state.RESET_COMMANDS:
-                success, response_msg = self.user_state.process_command(user_id, command)
-                await self._send_message(chat_id, response_msg)
-                result["success"] = True
-                result["message"] = f"Command processed: {command}"
-                return result
-            
-            # Неизвестная команда
-            if command.startswith('/'):
-                _, error_msg = self.user_state.process_command(user_id, command)
-                await self._send_message(chat_id, error_msg)
-                result["success"] = True
-                result["message"] = "Unknown command"
-                return result
+        # Извлекаем команду если есть
+        command = self.classifier.extract_command_from_text(text or caption)
         
-        # Определяем тип медиа и получаем file_info
+        # Определяем тип медиа и получаем file_id
         file_info = self._extract_file_info(message)
         
         if not file_info:
+            # Если это просто текстовое сообщение с командой - игнорируем
+            if text and text.startswith('/'):
+                result["message"] = "Command received, waiting for media"
+                result["success"] = True
+                return result
+            
             result["message"] = "No supported media found"
             return result
         
@@ -245,28 +111,13 @@ class WebhookHandler:
                 result["message"] = "Failed to download file"
                 return result
             
-            # Получаем активную категорию пользователя
-            user_category = self.user_state.get_user_category(user_id)
-            
-            # Обновляем активность
-            self.user_state.update_activity(user_id)
-            
-            # Если у пользователя есть активная категория (не Other), используем её
-            # Иначе классифицируем автоматически
-            if user_category != "Other":
-                category = user_category
-                reason = "user_command"
-            else:
-                # Извлекаем команду из caption если есть
-                command = self.classifier.extract_command_from_text(caption)
-                
-                # Автоматическая классификация
-                category, reason = self.classifier.classify(
-                    filename=actual_filename,
-                    caption=caption,
-                    chat_title=chat_title,
-                    command=command
-                )
+            # Классифицируем
+            category, reason = self.classifier.classify(
+                filename=actual_filename,
+                caption=caption,
+                chat_title=chat_title,
+                command=command
+            )
             
             # Определяем дату сохранения
             save_date = datetime.now()
@@ -309,7 +160,7 @@ class WebhookHandler:
         """
         # Фото (берём самое большое)
         if "photo" in message and message["photo"]:
-            photo = message["photo"][-1]
+            photo = message["photo"][-1]  # Последнее = самое большое
             return {
                 "file_id": photo["file_id"],
                 "file_name": f"photo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
@@ -429,30 +280,6 @@ class WebhookHandler:
             self.logger.error(f"Download error: {e}")
             return None, default_name
     
-    async def _send_message(self, chat_id: int, text: str):
-        """
-        Отправить сообщение пользователю
-        
-        Args:
-            chat_id: ID чата
-            text: Текст сообщения
-        """
-        try:
-            async with aiohttp.ClientSession() as session:
-                url = f"{self.api_base}/sendMessage"
-                payload = {
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "HTML"
-                }
-                
-                async with session.post(url, json=payload) as resp:
-                    if resp.status != 200:
-                        self.logger.warning(f"Failed to send message: {resp.status}")
-                        
-        except Exception as e:
-            self.logger.warning(f"Send message error: {e}")
-    
     async def _send_confirmation(self, chat_id: int, category: str, filename: str, save_date: datetime = None):
         """
         Отправить подтверждение пользователю
@@ -470,7 +297,17 @@ class WebhookHandler:
             date_str = save_date.strftime("%Y-%m-%d")
             message = f"☀️ Saved → {category} / {date_str}"
             
-            await self._send_message(chat_id, message)
+            async with aiohttp.ClientSession() as session:
+                url = f"{self.api_base}/sendMessage"
+                payload = {
+                    "chat_id": chat_id,
+                    "text": message,
+                    "parse_mode": "HTML"
+                }
+                
+                async with session.post(url, json=payload) as resp:
+                    if resp.status != 200:
+                        self.logger.warning(f"Failed to send confirmation: {resp.status}")
                         
         except Exception as e:
             self.logger.warning(f"Confirmation error: {e}")
