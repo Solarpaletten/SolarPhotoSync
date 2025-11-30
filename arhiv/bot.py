@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.1.0 - Main Bot Module (Deploy Edition)
+SOLAR PhotoSync v1.0.1 - Main Bot Module
 Telegram Bot для автоматической загрузки медиафайлов в SOLAR
 
 Автор: Claude (инженер)
@@ -15,22 +15,21 @@ import time
 from pathlib import Path
 from datetime import datetime
 from aiohttp import web
-from dotenv import load_dotenv
 
 # Добавляем src в путь
 sys.path.insert(0, str(Path(__file__).parent))
 
-from logger import get_logger, PhotoSyncLogger, get_last_saved
-from classifier import create_classifier
-from heic_converter import create_converter
-from file_saver import create_file_saver
-from webhook_handler import create_webhook_handler
+from src.logger import get_logger, PhotoSyncLogger, get_last_saved
+from src.classifier import create_classifier
+from src.heic_converter import create_converter
+from src.file_saver import create_file_saver
+from arhiv.webhook_handler import create_webhook_handler
 
 
 class SolarPhotoSyncBot:
     """Главный класс бота Solar PhotoSync"""
     
-    VERSION = "1.1.0"
+    VERSION = "1.0.1"
     
     def __init__(self, config_path: str = None):
         """
@@ -42,14 +41,8 @@ class SolarPhotoSyncBot:
         # Фиксируем время старта для uptime
         self.start_time = time.time()
         
-        # Загружаем переменные окружения из secret.env
-        self._load_env_files()
-        
         # Загружаем конфигурацию
         self.config = self._load_config(config_path)
-        
-        # Применяем токен из переменной окружения если есть
-        self._apply_env_token()
         
         # Инициализируем логгер
         self.logger = get_logger()
@@ -74,27 +67,6 @@ class SolarPhotoSyncBot:
         self._setup_routes()
         
         self.logger.info("All components initialized successfully")
-    
-    def _load_env_files(self):
-        """Загрузить переменные окружения из файлов"""
-        # Ищем secret.env в разных местах
-        possible_paths = [
-            Path(__file__).parent.parent / "config" / "secret.env",
-            Path("/var/www/SolarPhotoSync/config/secret.env"),
-            Path.home() / ".solar" / "secret.env",
-            Path(".env"),
-        ]
-        
-        for env_path in possible_paths:
-            if env_path.exists():
-                load_dotenv(env_path)
-                break
-    
-    def _apply_env_token(self):
-        """Применить токен из переменной окружения"""
-        env_token = os.getenv("TELEGRAM_BOT_TOKEN")
-        if env_token:
-            self.config["bot"]["token"] = env_token
     
     def _load_config(self, config_path: str = None) -> dict:
         """
@@ -171,7 +143,6 @@ class SolarPhotoSyncBot:
         """Настройка маршрутов веб-сервера"""
         self.app.router.add_post('/api/photosync/webhook', self.handle_webhook)
         self.app.router.add_get('/api/photosync/health', self.handle_health)
-        self.app.router.add_get('/api/photosync/ping', self.handle_ping)
         self.app.router.add_get('/api/photosync/stats', self.handle_stats)
         self.app.router.add_get('/', self.handle_root)
     
@@ -182,52 +153,22 @@ class SolarPhotoSyncBot:
         POST /api/photosync/webhook
         """
         try:
-            # Проверяем Content-Type
-            content_type = request.headers.get('Content-Type', '')
-            if 'application/json' not in content_type:
-                self.logger.warning(f"Invalid Content-Type: {content_type}")
-                return web.json_response(
-                    {"error": "Invalid Content-Type, expected application/json"},
-                    status=400
-                )
-            
-            # Читаем тело запроса
-            try:
-                body = await request.text()
-                if not body:
-                    self.logger.debug("Empty webhook body received")
-                    return web.json_response({"status": "ok", "message": "empty"})
-                
-                update = json.loads(body)
-            except json.JSONDecodeError as e:
-                self.logger.warning(f"Invalid JSON in webhook: {e}")
-                return web.json_response(
-                    {"error": f"Invalid JSON: {str(e)}"},
-                    status=400
-                )
-            
-            # Обрабатываем update
+            update = await request.json()
             result = await self.webhook_handler.handle_update(update)
             
             return web.json_response(result)
             
+        except json.JSONDecodeError:
+            return web.json_response(
+                {"error": "Invalid JSON"},
+                status=400
+            )
         except Exception as e:
             self.logger.error(f"Webhook error: {e}")
             return web.json_response(
                 {"error": str(e)},
                 status=500
             )
-    
-    async def handle_ping(self, request: web.Request) -> web.Response:
-        """
-        Ping endpoint для проверки доступности
-        
-        GET /api/photosync/ping
-        """
-        return web.json_response({
-            "status": "alive",
-            "timestamp": datetime.now().isoformat()
-        })
     
     async def handle_health(self, request: web.Request) -> web.Response:
         """

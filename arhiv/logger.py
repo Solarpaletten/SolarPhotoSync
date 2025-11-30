@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.1.0 - Logger Module (Deploy Edition)
+SOLAR PhotoSync v1.0.1 - Logger Module
 Модуль логирования для отслеживания всех операций
 """
 

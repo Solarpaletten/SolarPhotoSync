@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.1.0 - HEIC Converter Module (Deploy Edition)
+SOLAR PhotoSync v1.0.1 - HEIC Converter Module
 Конвертация HEIC/HEIF в JPG с сохранением EXIF
 """
 
@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 from typing import Optional, Tuple
 from datetime import datetime
-from logger import get_logger
+from src.logger import get_logger
 
 
 class HeicConverter:

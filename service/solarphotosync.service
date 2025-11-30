@@ -1,0 +1,32 @@
+[Unit]
+Description=Solar PhotoSync Bot - Telegram Media Sync Service
+Documentation=https://github.com/solar/photosync
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/SolarPhotoSync
+ExecStart=/var/www/SolarPhotoSync/venv/bin/python -m src.bot --config /var/www/SolarPhotoSync/config/photosync.production.json
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/var/www/SolarPhotoSync/config/secret.env
+
+# Security
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=append:/var/www/SolarPhotoSync/logs/service.log
+StandardError=append:/var/www/SolarPhotoSync/logs/service-error.log
+
+[Install]
+WantedBy=multi-user.target

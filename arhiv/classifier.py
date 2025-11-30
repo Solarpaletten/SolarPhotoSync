@@ -1,11 +1,11 @@
 """
-SOLAR PhotoSync v1.1.0 - Classifier Module (Deploy Edition)
+SOLAR PhotoSync v1.0.1 - Classifier Module
 Мини-ИИ классификация v1.0 по ключевым словам
 """
 
 import re
 from typing import Optional, Tuple
-from logger import get_logger
+from src.logger import get_logger
 
 
 class FileClassifier:

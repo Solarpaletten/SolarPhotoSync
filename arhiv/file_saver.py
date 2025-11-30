@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.1.0 - File Saver Module (Deploy Edition)
+SOLAR PhotoSync v1.0.1 - File Saver Module
 Сохранение файлов в структурированную файловую систему
 """
 
@@ -8,8 +8,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
-from logger import get_logger, update_last_saved, root_path_created
-from heic_converter import HeicConverter
+from src.logger import get_logger, update_last_saved, root_path_created
+from src.heic_converter import HeicConverter
 
 
 class FileSaver:

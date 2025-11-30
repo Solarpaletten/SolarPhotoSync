@@ -1,5 +1,5 @@
 """
-SOLAR PhotoSync v1.1.0 - Webhook Handler (Deploy Edition)
+SOLAR PhotoSync v1.0.1 - Webhook Handler
 Обработчик webhook запросов от Telegram
 """
 
@@ -9,9 +9,9 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
-from logger import get_logger
-from classifier import FileClassifier
-from file_saver import FileSaver
+from src.logger import get_logger
+from src.classifier import FileClassifier
+from src.file_saver import FileSaver
 
 
 class WebhookHandler:
