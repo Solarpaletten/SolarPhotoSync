@@ -1,0 +1,54 @@
+{
+  "bot": {
+    "token": "TELEGRAM_BOT_TOKEN",
+    "webhook_url": "https://www.swapoil.de/api/photosync/webhook",
+    "webhook_secret": "your-webhook-secret"
+  },
+  "storage": {
+    "root_path": "/Users/asset/Documents/ITproject/SolarPhotoSync/SOLAR-PhotoSync",
+    "allowed_types": [
+      "photo",
+      "document",
+      "video",
+      "animation",
+      "audio",
+      "voice",
+      "video_note"
+    ],
+    "allowed_extensions": [
+      ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif",
+      ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+      ".mp4", ".mov", ".avi", ".mkv",
+      ".mp3", ".wav", ".ogg"
+    ]
+  },
+  "processing": {
+    "convert_heic": true,
+    "heic_quality": 85,
+    "preserve_exif": true,
+    "max_file_size_mb": 100
+  },
+  "classification": {
+    "auto_classification": true,
+    "default_category": "Other",
+    "categories": {
+      "Sprinter": ["sprinter", "спринтер", "sprint"],
+      "LDZ": ["ldz", "vagon", "вагон", "wagon", "railway", "жд"],
+      "Legal": ["court", "суд", "teismas", "legal", "юрист", "lawyer", "иск", "протокол"],
+      "Documents": ["document", "док", "pasas", "паспорт", "passport", "удостоверение", "license", "справка", "certificate"]
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "log_path": "/Users/asset/Documents/ITproject/SolarPhotoSync/logs",
+    "log_file": "photosync.log",
+    "log_level": "INFO",
+    "max_log_size_mb": 10,
+    "backup_count": 5
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "debug": false
+  }
+}
